@@ -40,10 +40,10 @@ public class MainActivity extends AppCompatActivity {
                 tv.setHeight( dpToPixel(30) );
                 tv.setWidth( dpToPixel(30) );
                 tv.setText(String.valueOf(i)+String.valueOf(j));
-                tv.setTextSize(15);//dpToPixel(32) );
+                tv.setTextSize(15);
                 tv.setTextAlignment(TextView.TEXT_ALIGNMENT_CENTER);
-                tv.setTextColor(Color.GRAY);
-                tv.setBackgroundColor(Color.GRAY);
+                tv.setTextColor(Color.GREEN);
+                tv.setBackgroundColor(Color.GREEN);
                 tv.setOnClickListener(this::onClickTV);
 
                 GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
@@ -73,10 +73,7 @@ public class MainActivity extends AppCompatActivity {
         int i = n/COLUMN_COUNT;
         int j = n%COLUMN_COUNT;
         //tv.setText(String.valueOf(i)+String.valueOf(j));
-        if (tv.getCurrentTextColor() == Color.GRAY) {
-            tv.setTextColor(Color.GREEN);
-            tv.setBackgroundColor(Color.parseColor("lime"));
-        }else {
+        if (tv.getCurrentTextColor() == Color.GREEN) {
             tv.setTextColor(Color.GRAY);
             tv.setBackgroundColor(Color.LTGRAY);
         }

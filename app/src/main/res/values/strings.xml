@@ -4,4 +4,6 @@
     <string name="flag">\uD83D\uDEA9</string>
     <string name="mine">\uD83D\uDCA3</string>
     <string name="pick">\u26CF</string>
+    <string name="time_count">00</string>
+    <string name="flag_count">4</string>
 </resources>
