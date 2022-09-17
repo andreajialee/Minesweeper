@@ -76,8 +76,7 @@ public class MainActivity extends AppCompatActivity {
                 int index = getCellIndex(x,y);
                 TextView bomb_cell = cell_tvs.get(index);
                 bomb_cell.setText(R.string.mine);
-                bomb_cell.setTextColor(Color.GREEN);
-                // hide(bomb_cell);
+                bomb_cell.setTextColor(Color.TRANSPARENT);
                 cell_tvs.set(index, bomb_cell);
                 bombs_added++;
             }
@@ -213,38 +212,28 @@ public class MainActivity extends AppCompatActivity {
         int j = n%COLUMN_COUNT;
         //tv.setText(String.valueOf(i)+String.valueOf(j));
         // If the cell clicked is a bomb, we end the game
-        if (tv.getText() == "\\uD83D\\uDCA3") {
-            // End Game
+        if (tv.getText().toString().compareTo(getResources().getString(R.string.mine)) == 0) {
+            showBombs();
+            game_over = true;
         }
         // If the cell is blank, we clear its adjacent cells
         else if (tv.getText().equals("")) {
             List<TextView> toClear = new ArrayList<>();
             List<TextView> toCheck = new ArrayList<>();
             toCheck.add(tv);
-
-            while(toCheck.size() > 0) {
-                TextView curr_tv = toCheck.get(0);
-                int index = findIndexOfCellTextView(tv);
-                int pos[] = getCellPos(index);
-                List<TextView> cells = getSurroundingCells(pos[0], pos[1]);
-                for (TextView adj_cell: cells) {
-                    if (adj_cell.getText() == "") {
-                        if (!toClear.contains(adj_cell) && !toCheck.contains(adj_cell)) {
-                            toCheck.add(adj_cell);
-                        }
-                    }
-                    else {
-                        if (!toClear.contains(adj_cell)) {
-                            toClear.add(adj_cell);
-                        }
+            while (toCheck.size() > 0) {
+                TextView curr_cell = toCheck.get(0);
+                int cellIndex = findIndexOfCellTextView(curr_cell);
+                int[] cellPos = getCellPos(cellIndex);
+                List<TextView> surrounding_cells = getSurroundingCells(cellPos[0], cellPos[1]);
+                for (TextView adj_cell: surrounding_cells) {
+                    if (adj_cell.getText() == "" && !toClear.contains(adj_cell) && !toCheck.contains(adj_cell)) {
+                        adj_cell.setBackgroundColor(Color.LTGRAY);
+                        toCheck.add(adj_cell);
                     }
                 }
-                toCheck.remove(curr_tv);
-                toClear.add(curr_tv);
-            }
-
-            for (TextView cell : toClear) {
-                tv.setBackgroundColor(Color.LTGRAY);
+                toCheck.remove(curr_cell);
+                toClear.add(curr_cell);
             }
         }
         if (tv.getCurrentTextColor() == Color.GREEN) {
@@ -253,13 +242,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     /*
-    Hide the visibility of a TextView
+    This function shows all the bombs within the game
      */
-    public void hide(TextView tv) {
-        //Toggle
-        if (tv.getVisibility() == View.VISIBLE)
-            tv.setVisibility(View.INVISIBLE);
-        else
-            tv.setVisibility(View.VISIBLE);
+    public void showBombs() {
+        for (TextView tv : cell_tvs) {
+            if (tv.getText().toString().compareTo(getResources().getString(R.string.mine)) == 0) {
+                tv.setTextColor(Color.GREEN);
+                tv.setBackgroundColor(Color.LTGRAY);
+            }
+        }
     }
 }
