@@ -3,9 +3,11 @@ package com.example.gridlayout;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.gridlayout.widget.GridLayout;
 
+import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
@@ -25,7 +27,16 @@ public class MainActivity extends AppCompatActivity {
     // save the TextViews of all cells in an array, so later on,
     // when a TextView is clicked, we know which cell it is
     private ArrayList<TextView> cell_tvs;
-    private boolean game_over;
+    // When game is over
+    private boolean game_over = false;
+    // Save values for timer
+    private int clock;
+    private boolean running = false;
+    // Create values to flag
+    private int flag_count = 0;
+    private boolean flagging = false;
+
+
 
     private int dpToPixel(int dp) {
         float density = Resources.getSystem().getDisplayMetrics().density;
@@ -37,9 +48,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        cell_tvs = new ArrayList<TextView>();
-        game_over = false;
+        if (savedInstanceState != null) {
+            clock = savedInstanceState.getInt("clock");
+            running = savedInstanceState.getBoolean("running");
+        }
 
+        cell_tvs = new ArrayList<TextView>();
         GridLayout grid = (GridLayout) findViewById(R.id.gridLayout01);
         LayoutInflater li = LayoutInflater.from(this);
 
@@ -62,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         generateGrid();
+        runTimer();
     }
 
     /*
@@ -193,7 +208,6 @@ public class MainActivity extends AppCompatActivity {
         temp.add(getCell(x+1, y+1));
         // If that cell isn't null, we add it to the surroundingCells list
         List<TextView> surroundingCells = new ArrayList<>();
-        System.out.println("Cell " + x + y);
         for (TextView cell: temp) {
             if (cell != null) {
                 surroundingCells.add(cell);
@@ -203,18 +217,43 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
+    This function flags and un-flags a clicked cell
+     */
+    public void flagCell(TextView tv) {
+        // If the cell is not revealed, we can flag it
+        if (tv.getCurrentTextColor() == Color.GREEN) {
+            // If the cell is currently a flag, we revert our flag and reset the value
+            if (tv.getText().toString().equals(getResources().getString(R.string.flag))) {
+                tv.setText(tv.getHint());
+                // If the cell is a mine, we set the color to be transparent
+                if (tv.getText().toString().equals(getResources().getString(R.string.mine))) {
+                    tv.setTextColor(Color.TRANSPARENT);
+                }
+            }
+            else {
+                // We save that cells' value as its hint value, and set that cell as a flag
+                tv.setHint(tv.getText());
+                tv.setHintTextColor(Color.TRANSPARENT);
+                tv.setText(R.string.flag);
+            }
+        }
+    }
+
+    /*
     This function alters the cell given that it is clicked
      */
     public void onClickTV(View view){
+        running = true;
         TextView tv = (TextView) view;
         int n = findIndexOfCellTextView(tv);
         int i = n/COLUMN_COUNT;
         int j = n%COLUMN_COUNT;
         //tv.setText(String.valueOf(i)+String.valueOf(j));
         // If the cell clicked is a bomb, we end the game
-        if (tv.getText().toString().compareTo(getResources().getString(R.string.mine)) == 0) {
+        if (tv.getText().toString().equals(getResources().getString(R.string.mine))) {
             showBombs();
             game_over = true;
+            gameFinished();
         }
         // If the cell is blank, we clear its adjacent cells
         else if (tv.getText().equals("")) {
@@ -251,5 +290,46 @@ public class MainActivity extends AppCompatActivity {
                 tv.setBackgroundColor(Color.LTGRAY);
             }
         }
+    }
+
+    public void gameFinished() {
+        Intent gameOver = new Intent(MainActivity.this, GameFinished.class);
+        startActivity(gameOver);
+    }
+
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+        savedInstanceState.putInt("clock", clock);
+        savedInstanceState.putBoolean("running", running);
+    }
+    public void onClickStart(View view) {
+        running = true;
+    }
+    public void onClickStop(View view) {
+        running = false;
+    }
+    public void onClickClear(View view) {
+        running = false;
+        clock = 0;
+    }
+    private void runTimer() {
+        final TextView timeView = (TextView) findViewById(R.id.activity_main_time_count);
+        final Handler handler = new Handler();
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                if(clock == 60) {
+                    game_over = true;
+                    return;
+                }
+                int seconds = clock%60;
+                String time = String.format("%02d", seconds);
+                timeView.setText(time);
+                if (running) {
+                    clock++;
+                }
+                handler.postDelayed(this, 1000);
+            }
+        });
     }
 }
