@@ -1,5 +1,6 @@
 package com.example.gridlayout;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.gridlayout.widget.GridLayout;
 
@@ -12,31 +13,27 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
 
-import org.w3c.dom.Text;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
-
+    // Values to keep track of count
     private static final int COLUMN_COUNT = 8;
     private static final int ROW_COUNT = 10;
     private static final int BOMB_COUNT = 4;
-
-    // save the TextViews of all cells in an array, so later on,
-    // when a TextView is clicked, we know which cell it is
+    // Array of TextViews represents each cell
     private ArrayList<TextView> cell_tvs;
-    // When game is over
-    private boolean game_over = false;
-    // Save values for timer
+    // Values for our timer
     private int clock;
     private boolean running = false;
-    // Create values to flag
-    private int flag_count = 0;
+    // Boolean to keep track of the game
+    private boolean gameOver = false;
+    // Create values for flagging
+    private int flag_count = BOMB_COUNT;
     private boolean flagging = false;
-
-
+    private TextView flagButton;
+    private TextView flagCount;
 
     private int dpToPixel(int dp) {
         float density = Resources.getSystem().getDisplayMetrics().density;
@@ -47,17 +44,31 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        // Create clock
         if (savedInstanceState != null) {
             clock = savedInstanceState.getInt("clock");
             running = savedInstanceState.getBoolean("running");
         }
-
+        // Create the bottom button to toggle between flagging and digging mode
+        flagButton = findViewById(R.id.activity_main_flag);
+        flagCount = findViewById(R.id.activity_main_flag_count);
+        flagButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                flagging = !flagging;
+                if (flagging) {
+                    flagButton.setText(R.string.flag);
+                }
+                else {
+                    flagButton.setText(R.string.pick);
+                }
+            }
+        });
+        // Create empty grid for the Minesweeper game
         cell_tvs = new ArrayList<TextView>();
-        GridLayout grid = (GridLayout) findViewById(R.id.gridLayout01);
+        GridLayout grid = findViewById(R.id.gridLayout01);
         LayoutInflater li = LayoutInflater.from(this);
-
-        // Create an the empty list of cell text views
+        // Populate our ArrayList with empty cells
         for (int i = 0; i <ROW_COUNT; i++) {
             for (int j=0; j < COLUMN_COUNT; j++) {
                 TextView tv = (TextView) li.inflate(R.layout.custom_cell_layout, grid, false);
@@ -78,29 +89,29 @@ public class MainActivity extends AppCompatActivity {
         generateGrid();
         runTimer();
     }
-
     /*
     This function populates the empty grid with bombs and values
      */
     public void generateGrid() {
-        int bombs_added = 0;
-        while (bombs_added < BOMB_COUNT) {
+        int mines_added = 0;
+        while (mines_added < BOMB_COUNT) {
             int x = new Random().nextInt(ROW_COUNT);
             int y = new Random().nextInt(COLUMN_COUNT);
-            if (getCell(x, y).getText() == "") {
+            TextView mine = getCell(x,y);
+            if (mine != null && mine.getText() == "") {
                 int index = getCellIndex(x,y);
-                TextView bomb_cell = cell_tvs.get(index);
-                bomb_cell.setText(R.string.mine);
-                bomb_cell.setTextColor(Color.TRANSPARENT);
-                cell_tvs.set(index, bomb_cell);
-                bombs_added++;
+                TextView mine_cell = cell_tvs.get(index);
+                mine_cell.setText(R.string.mine);
+                mine_cell.setTextColor(Color.TRANSPARENT);
+                cell_tvs.set(index, mine_cell);
+                mines_added++;
             }
         }
         for (int x = 0; x < ROW_COUNT; x++) {
             for (int y = 0; y < COLUMN_COUNT; y++) {
                 // If the cell isn't a bomb, we count its number value
                 TextView curr_cell = getCell(x,y);
-                if (curr_cell.getText().equals("")) {
+                if (curr_cell != null && curr_cell.getText().equals("")) {
                     List<TextView> surrounding_cells = getSurroundingCells(x, y);
                     int bombCount = 0;
                     // Iterate through all the surrounding cells, and see if there is a bomb
@@ -172,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
             x = 9;
         }
         int y = index - (x * ROW_COUNT) + (2 * x);
-        int position[] = new int[2];
+        int[] position = new int[2];
         position[0] = x;
         position[1] = y;
         return position;
@@ -217,43 +228,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-    This function flags and un-flags a clicked cell
-     */
-    public void flagCell(TextView tv) {
-        // If the cell is not revealed, we can flag it
-        if (tv.getCurrentTextColor() == Color.GREEN) {
-            // If the cell is currently a flag, we revert our flag and reset the value
-            if (tv.getText().toString().equals(getResources().getString(R.string.flag))) {
-                tv.setText(tv.getHint());
-                // If the cell is a mine, we set the color to be transparent
-                if (tv.getText().toString().equals(getResources().getString(R.string.mine))) {
-                    tv.setTextColor(Color.TRANSPARENT);
-                }
-            }
-            else {
-                // We save that cells' value as its hint value, and set that cell as a flag
-                tv.setHint(tv.getText());
-                tv.setHintTextColor(Color.TRANSPARENT);
-                tv.setText(R.string.flag);
-            }
-        }
-    }
-
-    /*
-    This function alters the cell given that it is clicked
+    This function alters the clicked cell
      */
     public void onClickTV(View view){
         running = true;
         TextView tv = (TextView) view;
-        int n = findIndexOfCellTextView(tv);
-        int i = n/COLUMN_COUNT;
-        int j = n%COLUMN_COUNT;
-        //tv.setText(String.valueOf(i)+String.valueOf(j));
-        // If the cell clicked is a bomb, we end the game
-        if (tv.getText().toString().equals(getResources().getString(R.string.mine))) {
-            showBombs();
-            game_over = true;
+        // If game is won, we end the game
+        if (isGameOver()) {
             gameFinished();
+        }
+        else if (isGameWon()) {
+            showBombs();
+            running = false;
+            gameOver = true;
+        }
+        // If we are on flagging mode, we invoke the flagCell() function
+        if (flagging) {
+            flagCell(tv);
+        }
+        // If the cell clicked is a bomb, we end the game
+        else if (tv.getText().toString().equals(getResources().getString(R.string.mine))) {
+            showBombs();
+            running = false;
+            gameOver = true;
         }
         // If the cell is blank, we clear its adjacent cells
         else if (tv.getText().equals("")) {
@@ -267,6 +264,7 @@ public class MainActivity extends AppCompatActivity {
                 List<TextView> surrounding_cells = getSurroundingCells(cellPos[0], cellPos[1]);
                 for (TextView adj_cell: surrounding_cells) {
                     if (adj_cell.getText() == "" && !toClear.contains(adj_cell) && !toCheck.contains(adj_cell)) {
+                        adj_cell.setTextColor(Color.GRAY);
                         adj_cell.setBackgroundColor(Color.LTGRAY);
                         toCheck.add(adj_cell);
                     }
@@ -275,51 +273,57 @@ public class MainActivity extends AppCompatActivity {
                 toClear.add(curr_cell);
             }
         }
-        if (tv.getCurrentTextColor() == Color.GREEN) {
+        if (tv.getCurrentTextColor() == Color.GREEN && !flagging && !tv.getText().toString().equals(getResources().getString(R.string.flag))) {
             tv.setTextColor(Color.GRAY);
             tv.setBackgroundColor(Color.LTGRAY);
         }
     }
+
     /*
-    This function shows all the bombs within the game
-     */
-    public void showBombs() {
-        for (TextView tv : cell_tvs) {
-            if (tv.getText().toString().compareTo(getResources().getString(R.string.mine)) == 0) {
+    This function flags and un-flags a clicked cell
+    */
+    public void flagCell(TextView tv) {
+        // If the cell is not revealed, we can flag it
+        if (tv.getCurrentTextColor() != Color.GRAY) {
+            // If the cell is not a flag, we can flag it
+            if (!tv.getText().toString().equals(getResources().getString(R.string.flag))) {
+                // We set the TextView's Hint as the current value
+                tv.setHint(tv.getText());
+                tv.setText(R.string.flag);
                 tv.setTextColor(Color.GREEN);
-                tv.setBackgroundColor(Color.LTGRAY);
+                flag_count--;
+            }
+            // If the cell is a flag, we undo it
+            else if (tv.getText().toString().equals(getResources().getString(R.string.flag))) {
+                tv.setText(tv.getHint());
+                System.out.println(tv.getHint());
+                // If the cell is a mine, we set the color to be transparent
+                if (tv.getText().toString().equals(getResources().getString(R.string.mine))) {
+                    tv.setTextColor(Color.TRANSPARENT);
+                }
+                flag_count++;
             }
         }
+        flagCount.setText(Integer.toString(flag_count));
     }
 
-    public void gameFinished() {
-        Intent gameOver = new Intent(MainActivity.this, GameFinished.class);
-        startActivity(gameOver);
-    }
-
-    public void onSaveInstanceState(Bundle savedInstanceState) {
+    public void onSaveInstanceState(@NonNull Bundle savedInstanceState) {
         super.onSaveInstanceState(savedInstanceState);
         savedInstanceState.putInt("clock", clock);
         savedInstanceState.putBoolean("running", running);
     }
-    public void onClickStart(View view) {
-        running = true;
-    }
-    public void onClickStop(View view) {
-        running = false;
-    }
-    public void onClickClear(View view) {
-        running = false;
-        clock = 0;
-    }
+
+    /*
+    This function begins the timer and runs it
+     */
     private void runTimer() {
-        final TextView timeView = (TextView) findViewById(R.id.activity_main_time_count);
+        final TextView timeView = findViewById(R.id.activity_main_time_count);
         final Handler handler = new Handler();
         handler.post(new Runnable() {
             @Override
             public void run() {
                 if(clock == 60) {
-                    game_over = true;
+                    gameFinished();
                     return;
                 }
                 int seconds = clock%60;
@@ -332,4 +336,81 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+    /*
+    This function checks if the game is won
+     */
+    public boolean isGameWon() {
+        int revealedCell = 0;
+        for (TextView c: cell_tvs) {
+            // Ignore the cell if it is a mine
+            if (!c.getText().toString().equals(getResources().getString(R.string.mine))) {
+                if (!c.getText().equals("")) {
+                    if (c.getCurrentTextColor() != Color.GRAY) {
+                            ++revealedCell;
+                    }
+                }
+            }
+            // If the cell is flagged and if that cell is a mine, we subtract one
+            if (c.getText().toString().equals(getResources().getString(R.string.flag))) {
+                if (c.getHint().toString().equals(getResources().getString(R.string.mine))) {
+                    --revealedCell;
+                }
+            }
+        }
+        if (revealedCell == 0) {
+            showBombs();
+            gameOver = true;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /*
+    This function checks if the game is over
+     */
+    public boolean isGameOver() {
+        return gameOver;
+    }
+
+    /*
+    This function creates the new intent, and directs the user to the landing page
+     */
+    public void gameFinished() {
+        running = false;
+        String secondsUsed = "Used " + clock + " seconds.";
+        String gameResult;
+        if (isGameWon()) {
+            gameResult = "You Won.";
+        } else {
+            gameResult = "You Lost.";
+        }
+        Intent gameOver = new Intent(MainActivity.this, GameFinished.class);
+        gameOver.putExtra("gameResult", gameResult);
+        gameOver.putExtra("secondsUsed", secondsUsed);
+        startActivity(gameOver);
+    }
+
+    /*
+    This function shows all the bombs within the game
+     */
+    public void showBombs() {
+        for (TextView tv : cell_tvs) {
+            // If the text value is a bomb, we reveal it
+            if (tv.getText().toString().compareTo(getResources().getString(R.string.mine)) == 0) {
+                tv.setTextColor(Color.GRAY);
+                tv.setBackgroundColor(Color.RED);
+            }
+            // If the text value is a flag and it's a bomb under, we reveal it
+            else if (tv.getText().toString().equals(getResources().getString(R.string.flag))) {
+                if (tv.getHint().toString().equals(getResources().getString(R.string.mine))) {
+                    tv.setText(R.string.mine);
+                    tv.setTextColor(Color.GRAY);
+                    tv.setBackgroundColor(Color.RED);
+                }
+            }
+        }
+    }
+
 }
