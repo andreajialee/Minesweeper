@@ -235,12 +235,8 @@ public class MainActivity extends AppCompatActivity {
         TextView tv = (TextView) view;
         // If game is won, we end the game
         if (isGameOver()) {
-            gameFinished();
-        }
-        else if (isGameWon()) {
-            showBombs();
             running = false;
-            gameOver = true;
+            gameFinished();
         }
         // If we are on flagging mode, we invoke the flagCell() function
         if (flagging) {
@@ -276,6 +272,11 @@ public class MainActivity extends AppCompatActivity {
         if (tv.getCurrentTextColor() == Color.GREEN && !flagging && !tv.getText().toString().equals(getResources().getString(R.string.flag))) {
             tv.setTextColor(Color.GRAY);
             tv.setBackgroundColor(Color.LTGRAY);
+        }
+        if (isGameWon()) {
+            showBombs();
+            running = false;
+            gameOver = true;
         }
     }
 
